@@ -1,0 +1,8 @@
+flask
+gunicorn
+langchain
+langchain-google-genai
+langchain-chroma
+google-cloud-texttospeech
+langchain_community
+pdfminer.six

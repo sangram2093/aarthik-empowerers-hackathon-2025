@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aarthik Empowerers Chatbot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body.dark-mode {
+            background-color: #121212;
+            color: #fff;
+        }
+        #chatWidget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            max-height: 600px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            display: none;
+            flex-direction: column;
+            background: white;
+        }
+        #chatHeader {
+            background: #0d6efd;
+            color: white;
+            padding: 10px;
+            cursor: pointer;
+        }
+        #chatBody {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column-reverse; /* Newest on top */
+        }
+        .chat-card {
+            margin-bottom: 5px;
+        }
+        .chat-card.user {
+            background-color: #d1e7dd;
+            align-self: flex-end;
+        }
+        .chat-card.bot {
+            background-color: #f8d7da;
+            align-self: flex-start;
+        }
+        #chatIcon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #0d6efd;
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            line-height: 60px;
+            font-size: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .voice-indicator {
+            width: 10px;
+            height: 10px;
+            background: red;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .voice-indicator.active {
+            background: green;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Floating Chat Icon -->
+<div id="chatIcon" onclick="toggleChat()">💬</div>
+
+<!-- Chat Widget -->
+<div id="chatWidget" class="d-flex flex-column">
+    <div id="chatHeader" onclick="toggleChat()">Aarthik Empowerers Chatbot</div>
+    <div id="chatBody">
+        <div><small class="text-muted">Chat started...</small></div>
+    </div>
+    <div class="p-2 bg-light">
+        <select id="languageSelect" class="form-select mb-2">
+            <option value="en-US" selected>English (US)</option>
+            <option value="hi-IN">Hindi</option>
+            <option value="mr-IN">Marathi</option>
+        </select>
+
+        <div class="input-group mb-2">
+            <input type="text" id="question" class="form-control" placeholder="Type or speak...">
+            <button class="btn btn-secondary" onclick="startListening()">🎤 <span id="voiceIndicator" class="voice-indicator"></span></button>
+        </div>
+
+        <div class="d-flex gap-2 mb-2">
+            <button class="btn btn-primary w-50" onclick="askQuestion()">💬 Ask</button>
+            <button class="btn btn-dark w-50" onclick="toggleDarkMode()">🌗 Dark Mode</button>
+        </div>
+
+        <audio id="ttsPlayer" controls style="display:none;" class="w-100 mb-2"></audio>
+
+        <div class="input-group">
+            <input type="file" id="docFile" class="form-control">
+            <button class="btn btn-success" onclick="uploadDocument()">📁 Upload</button>
+        </div>
+
+        <small id="uploadResponse" class="text-muted"></small>
+    </div>
+</div>
+
+<script>
+    let isChatOpen = false;
+    let recognitionActive = false;
+
+    function toggleChat() {
+        const chatWidget = document.getElementById('chatWidget');
+        const chatIcon = document.getElementById('chatIcon');
+        isChatOpen = !isChatOpen;
+        chatWidget.style.display = isChatOpen ? 'flex' : 'none';
+        chatIcon.style.display = isChatOpen ? 'none' : 'block';
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    function getSelectedLanguage() {
+        return document.getElementById('languageSelect').value;
+    }
+
+    function addChatCard(message, sender) {
+        const chatBody = document.getElementById('chatBody');
+        const card = document.createElement('div');
+        card.className = `card p-2 chat-card ${sender}`;
+        card.innerText = message;
+        chatBody.prepend(card);
+    }
+
+    function askQuestion() {
+        const question = document.getElementById('question').value;
+        if (!question.trim()) return;
+        addChatCard(question, 'user');
+        fetch('/ask', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question: question})
+        })
+        .then(res => res.json())
+        .then(data => {
+            addChatCard(data.answer, 'bot');
+            getSpeechFromTTS(data.answer, getSelectedLanguage());
+        });
+    }
+
+    function uploadDocument() {
+        const fileInput = document.getElementById('docFile');
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        fetch('/add_document', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => document.getElementById('uploadResponse').innerText = data.status || data.error);
+    }
+
+    function startListening() {
+        const language = getSelectedLanguage();
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = language;
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const indicator = document.getElementById('voiceIndicator');
+        indicator.classList.add('active');
+        recognitionActive = true;
+
+        recognition.start();
+
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('question').value = transcript;
+            indicator.classList.remove('active');
+            recognitionActive = false;
+        };
+
+        recognition.onerror = function(event) {
+            alert('Voice Error: ' + event.error);
+            indicator.classList.remove('active');
+            recognitionActive = false;
+        };
+
+        recognition.onend = function() {
+            if (recognitionActive) {
+                indicator.classList.remove('active');
+                recognitionActive = false;
+            }
+        };
+    }
+
+    function getSpeechFromTTS(text, language) {
+        fetch('/tts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text: text, language: language})
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const audioUrl = URL.createObjectURL(blob);
+            const audioPlayer = document.getElementById('ttsPlayer');
+            audioPlayer.src = audioUrl;
+            audioPlayer.style.display = 'block';
+            audioPlayer.play();
+        });
+    }
+</script>
+
+</body>
+</html>
