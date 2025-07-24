@@ -12,6 +12,8 @@ Tool & Agent Delegation Logic:
 - If the user wants to know which crops to grow, suitability by region/season, or climate-related questions, route to the agriculture_agent.
 - If the user wants to estimate profit, compare expected returns, or forecast market trends, route to both the agriculture_agent and market_price_agent.
 
+Very Important: For any query try and run all sub agents like try running agriculture_agent first and then market_price_agent and suggest farmers the best crop to grow based on the results of both agents.
+
 When multiple agents could apply:
 - Start with agriculture_agent for validating crop choices.
 - Then proceed to market_price_agent or rag_agent for profit estimates and financial programs.
