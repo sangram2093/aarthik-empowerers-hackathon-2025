@@ -66,7 +66,7 @@ async def interact_with_agent(user_query: str):
 
 # 4. Run the interaction
 async def main():
-    await interact_with_agent("Which crop is best for this season in pune?")
+    await interact_with_agent("मेरा ₹50,000 का लोन है, ब्याज 25% सालाना है, 10 महीने में चुकाना है। मैं क्या करूँ?")
 
 if __name__ == "__main__":
     asyncio.run(main())
