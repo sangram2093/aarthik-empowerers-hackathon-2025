@@ -9,13 +9,17 @@ from google.cloud import texttospeech
 import os
 import re
 from agent import run_agricultural_agent
+from langchain.schema import AgentAction, AgentFinish
+from langchain.agents.output_parsers import ReActSingleInputOutputParser
+from langchain.agents.format_scratchpad import format_log_to_str
+from typing import Union, List
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "C:/Users/sangr/Downloads/sangram/developments/db_hackathon_2025/keyfile.json"
 
 vector_manager = VectorStoreManager()
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.2, google_api_key="AIzaSyAk1XJdNVS98jfX6KS5vvKOSunxXcRNLBw")
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.2, google_api_key="api key here")
 
 
 
@@ -24,17 +28,43 @@ qa_chain = RetrievalQA.from_chain_type(
     chain_type="stuff",
     retriever=vector_manager.get_vectorstore().as_retriever()
 )
-def retrieval_tool(query):
-    return qa_chain.invoke(query)
+class CustomOutputParser(ReActSingleInputOutputParser):
+    def parse(self, text: str) -> Union[AgentAction, AgentFinish]:
+        try:
+            return super().parse(text)
+        except Exception:
+            # If parsing fails, treat as final answer
+            return AgentFinish(
+                return_values={"output": text.strip()},
+                log=text
+            )
 
-def agricultural_tool(query):
-    return run_agricultural_agent(query)
+# Tool wrapper functions with error handling
+def safe_retrieval_tool(query: str) -> str:
+    """Safe wrapper for retrieval tool"""
+    try:
+        result = qa_chain.invoke({"query": query})
+        if isinstance(result, dict):
+            return result.get('result', str(result))
+        return str(result)
+    except Exception as e:
+        return f"Error retrieving information: {str(e)}"
+
+def safe_agricultural_tool(query: str) -> str:
+    """Safe wrapper for agricultural tool"""
+    try:
+        result = run_agricultural_agent(query)
+        if isinstance(result, dict):
+            return json.dumps(result, indent=2)
+        return str(result)
+    except Exception as e:
+        return f"Error getting agricultural advice: {str(e)}"
 
 
 tools = [
     Tool(
         name="Retrieval QA",
-        func=retrieval_tool,
+        func=safe_retrieval_tool,
         description=(
             "Use this tool to answer questions that require information from uploaded documents, "
             "financial schemes, government policies, subsidies, or general knowledge base queries."
@@ -42,7 +72,7 @@ tools = [
     ),
     Tool(
         name="Agricultural Agent",
-        func=agricultural_tool,
+        func=safe_agricultural_tool,
         description=(
             "Use this tool to answer questions related to crops, weather, soil, farming practices, "
             "agricultural advice, or anything about agriculture and climate."
@@ -55,6 +85,9 @@ agent = initialize_agent(
     llm,
     agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
     verbose=True,
+    max_iterations=3,
+    early_stopping_method="generate",
+    output_parser=CustomOutputParser(),
     agent_kwargs={
         "system_message": (
             "You are an assistant that decides which tool to use based on the user's question. "

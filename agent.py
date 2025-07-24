@@ -1,5 +1,7 @@
 from datetime import datetime
 from google.adk.agents import Agent
+from google.adk.runners import InMemoryRunner
+from google.genai.types import UserContent, Part
 import requests
 from typing import Dict, List, Any
 
@@ -165,6 +167,7 @@ def get_current_season():
 
 
 prompt = f"""
+Only give output in json format.
     You are an expert-level Indian Agricultural Feasibility agent. Your task is to provide a comprehensive, structured analysis for a given Indian location, with a special focus on the current season.
 
     If query is in Hindi or other regional languages , answer in the same regional language
@@ -185,7 +188,7 @@ prompt = f"""
 root_agent = Agent(
     name="agricultural_agent",
     model="gemini-2.0-flash",
-    description="You are an expert-level Indian Agricultural Feasibility agent. Your task is to provide a comprehensive, structured analysis for a given Indian location, with a special focus on the current season.",
+    description="You are an expert-level Indian Agricultural Feasibility agent. Your task is to provide a comprehensive, structured analysis for a given Indian location, with a special focus on the current season. Only give output in JSON format.",
     instruction=prompt,
     tools=[get_geolocation_data, get_current_season, get_environmental_data, get_indian_crop_recommendations, get_livestock_recommendations, get_recommendations_for_current_season]
     )
@@ -195,4 +198,16 @@ def run_agricultural_agent(query: str):
     """
     Runs the agricultural agent on the given query and returns the result.
     """
-    return root_agent(query)
+    runner = InMemoryRunner(agent=root_agent)
+    session = runner.session_service.create_session(
+        app_name=runner.app_name,
+        session_id=1234567890,  # Use a fixed session ID for simplicity
+        user_id="temp",
+    )
+    context = UserContent(parts=[Part(text=query)])
+    result = runner.run(
+        session_id=1234567890,  # Use a fixed session ID for simplicity
+        new_message=context,
+        user_id="temp",
+    )
+    return result
