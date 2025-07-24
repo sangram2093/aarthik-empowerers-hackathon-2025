@@ -3,7 +3,7 @@ from google.adk.agents import Agent
 from google.adk.tools.agent_tool import AgentTool
 from google.genai.types import GenerateContentConfig
 
-from empower_agent.sub_agents.agricultural import prompt
+from empower_agent.sub_agents.rag import prompt
 
 rag_agent = Agent(
     model="gemini-2.5-flash",
