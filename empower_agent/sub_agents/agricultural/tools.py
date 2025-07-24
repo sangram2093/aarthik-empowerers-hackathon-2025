@@ -77,7 +77,7 @@ def get_extreme_events(lat: float, lng: float):
         alerts.append(extreme_map[weathercode])
     return {"alerts": alerts}
 
-def get_environmental_data(latitude: float, longitude: float) -> Dict[str, Any]:
+def get_environmental_data(latitude: float, longitude: float) :
     # This tool remains unchanged
     print(f"TOOL: get_environmental_data called for Lat: {latitude}, Lon: {longitude}")
     try:
@@ -86,11 +86,25 @@ def get_environmental_data(latitude: float, longitude: float) -> Dict[str, Any]:
         response = requests.get(weather_url, params=params)
         response.raise_for_status()
         weather_data = response.json()
-        historical_precip = sum(weather_data['daily']['precipitation_sum'])
-        avg_temp = (sum(weather_data['daily']['temperature_2m_max']) + sum(weather_data['daily']['temperature_2m_min'])) / (len(weather_data['daily']['temperature_2m_max']) * 2)
-        climate = {"average_annual_temperature_celsius": round(avg_temp, 2), "annual_rainfall_mm": round(historical_precip, 2), "humidity_percent": weather_data['current']['relative_humidity_2m']}
-        water = {"water_abundance": "High" if climate['annual_rainfall_mm'] > 1200 else "Medium" if climate['annual_rainfall_mm'] > 600 else "Low", "irrigation_need": "Low" if climate['annual_rainfall_mm'] > 1200 else "Medium" if climate['annual_rainfall_mm'] > 600 else "High", "primary_water_sources": "Likely rain-fed, supplemented by groundwater (wells/borewells) and canals."}
+        tmax = [v for v in weather_data['daily']['temperature_2m_max'] if v is not None]
+        tmin = [v for v in weather_data['daily']['temperature_2m_min'] if v is not None]
+        precip = [v for v in weather_data['daily']['precipitation_sum'] if v is not None]
+
+        avg_temp = (sum(tmax) + sum(tmin)) / (len(tmax) + len(tmin)) if (len(tmax) + len(tmin)) > 0 else None
+        historical_precip = sum(precip) if precip else 0
+
+        climate = {
+            "average_annual_temperature_celsius": round(avg_temp, 2) if avg_temp is not None else None,
+            "annual_rainfall_mm": round(historical_precip, 2),
+            "humidity_percent": weather_data['current']['relative_humidity_2m']
+        }
+        water = {
+            "water_abundance": "High" if climate['annual_rainfall_mm'] > 1200 else "Medium" if climate['annual_rainfall_mm'] > 600 else "Low",
+            "irrigation_need": "Low" if climate['annual_rainfall_mm'] > 1200 else "Medium" if climate['annual_rainfall_mm'] > 600 else "High",
+            "primary_water_sources": "Likely rain-fed, supplemented by groundwater (wells/borewells) and canals."
+        }
         return {"climate": climate, "water": water}
+
     except Exception as e: return {"error": f"An unexpected error during environmental data fetch: {e}"}
 
 def get_indian_crop_recommendations(climate: Dict[str, Any]) -> Dict[str, List[str]]:
