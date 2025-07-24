@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_file, render_template
+from flask_cors import CORS
 from langchain.chains import RetrievalQA
 from langchain_google_genai import ChatGoogleGenerativeAI
 from vector_store_manager import VectorStoreManager
@@ -7,10 +8,11 @@ import os
 import re
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
+CORS(app)
 #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "C:/Users/sangr/Downloads/sangram/developments/db_hackathon_2025/keyfile.json"
 
 vector_manager = VectorStoreManager()
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.2, google_api_key="YOUR_API_KEY")
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.2, google_api_key="YOUR_KEY_HERE")
 
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
