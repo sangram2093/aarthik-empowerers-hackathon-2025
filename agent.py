@@ -194,18 +194,18 @@ root_agent = Agent(
     )
 
 
-def run_agricultural_agent(query: str):
+async def run_agricultural_agent(query: str):
     """
     Runs the agricultural agent on the given query and returns the result.
     """
     runner = InMemoryRunner(agent=root_agent)
-    session = runner.session_service.create_session(
+    session = await runner.session_service.create_session(
         app_name=runner.app_name,
         session_id=1234567890,  # Use a fixed session ID for simplicity
         user_id="temp",
     )
     context = UserContent(parts=[Part(text=query)])
-    result = runner.run(
+    result = await runner.run(
         session_id=1234567890,  # Use a fixed session ID for simplicity
         new_message=context,
         user_id="temp",

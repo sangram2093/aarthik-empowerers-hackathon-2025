@@ -3,11 +3,14 @@ from langchain_community.document_loaders import TextLoader, PDFMinerLoader, Uns
 from langchain_chroma import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class VectorStoreManager:
     def __init__(self, persist_directory="./vectorstore"):
         self.persist_directory = persist_directory
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="embedding-001", google_api_key="YOUR_KEY_HERE")
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="embedding-001", google_api_key=os.getenv("API_KEY"))
         self.vectorstore = Chroma(
             persist_directory=self.persist_directory,
             embedding_function=self.embeddings
