@@ -7,7 +7,7 @@ import os
 class VectorStoreManager:
     def __init__(self, persist_directory="./vectorstore"):
         self.persist_directory = persist_directory
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="embedding-001", google_api_key="YOUR_API_KEY")
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="embedding-001", google_api_key="YOUR_KEY_HERE")
         self.vectorstore = Chroma(
             persist_directory=self.persist_directory,
             embedding_function=self.embeddings
