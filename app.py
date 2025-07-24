@@ -2,22 +2,67 @@ from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
 from langchain.chains import RetrievalQA
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.tools import Tool
+from langchain.agents import initialize_agent, AgentType
 from vector_store_manager import VectorStoreManager
 from google.cloud import texttospeech
 import os
 import re
+from agent import run_agricultural_agent
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "C:/Users/sangr/Downloads/sangram/developments/db_hackathon_2025/keyfile.json"
 
 vector_manager = VectorStoreManager()
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.2, google_api_key="YOUR_KEY_HERE")
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.2, google_api_key="AIzaSyAk1XJdNVS98jfX6KS5vvKOSunxXcRNLBw")
+
+
 
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff",
     retriever=vector_manager.get_vectorstore().as_retriever()
+)
+def retrieval_tool(query):
+    return qa_chain.invoke(query)
+
+def agricultural_tool(query):
+    return run_agricultural_agent(query)
+
+
+tools = [
+    Tool(
+        name="Retrieval QA",
+        func=retrieval_tool,
+        description=(
+            "Use this tool to answer questions that require information from uploaded documents, "
+            "financial schemes, government policies, subsidies, or general knowledge base queries."
+        )
+    ),
+    Tool(
+        name="Agricultural Agent",
+        func=agricultural_tool,
+        description=(
+            "Use this tool to answer questions related to crops, weather, soil, farming practices, "
+            "agricultural advice, or anything about agriculture and climate."
+        )
+    ),
+]
+
+agent = initialize_agent(
+    tools,
+    llm,
+    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    verbose=True,
+    agent_kwargs={
+        "system_message": (
+            "You are an assistant that decides which tool to use based on the user's question. "
+            "If the question is about crops, weather, soil, or agriculture, use the Agricultural Agent. "
+            "If the question is about finance, government schemes, policies, or needs information from uploaded documents, use the Retrieval QA tool."
+            "If the question is for both knowledge, use the both tools as well."
+        )
+    }
 )
 
 def clean_text(text):
@@ -46,7 +91,7 @@ def ask():
     question = data.get('question')
     if not question:
         return jsonify({"error": "Question not provided"}), 400
-    answer = qa_chain.run(question)
+    answer = agent.invoke(question)
     return jsonify({"answer": answer})
 
 @app.route('/add_document', methods=['POST'])
