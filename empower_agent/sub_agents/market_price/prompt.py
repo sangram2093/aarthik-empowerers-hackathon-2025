@@ -1,5 +1,5 @@
 
-"""Prompt for the agricultural agent."""
+"""Prompt for the market price agent."""
 MARKET_PRICE_AGENT_INSTR = """
 
 """
