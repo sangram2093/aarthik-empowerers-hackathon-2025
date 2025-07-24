@@ -55,9 +55,6 @@ Current user:
 
 Current time: {_time}
 
-<seasonal_info>
-{seasonal_info}
-</seasonal_info>
 
 Based on the detected phase (pre_season, in_season, or post_season), delegate further dialog to the appropriate agent for:
 - planning and education,
